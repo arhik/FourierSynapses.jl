@@ -1,0 +1,4 @@
+name = "FourierSynapse"
+uuid = "04f03583-e2b8-4c58-ab3c-cb7466a0a2a5"
+authors = ["arhik <arhik23@gmail.com>"]
+version = "0.1.0"
