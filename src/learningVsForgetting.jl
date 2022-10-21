@@ -3,12 +3,13 @@ using Zygote
 using Optimisers
 using BenchmarkTools
 
+using FFTW
+using Hadamard
+
 a = BitVector(rand(Bool, 2^4))
 b = BitVector(rand(Bool, 2^4))
 
 dataset = unique([BitVector(rand(Bool, 2^4)) for _ in 1:2^4])
-
-c = a * (adjoint(b))
 
 toSpins(a::Bool) = @inline toSpins(Val(a))
 @inline toSpins(a::Val{true}) = -1
@@ -17,10 +18,6 @@ toSpins(a::BitVector) = toSpins.(a)
 
 toBits(a::Number) = a > 0
 toBits(a::AbstractArray) = toBits.(ifwht(a))
-
-
-using FFTW
-using Hadamard
 
 aCoeffs = fwht(a |> toSpins)
 bCoeffs = fwht(b |> toSpins)
@@ -40,7 +37,6 @@ for epoch in 1:100
 	# bCoeffs .-= grads[2]*opt.eta
 end
 
-
 struct Segment{T}
     a::BitVector # TODO keep track of when bit flips
     w::AbstractVector{T}
@@ -57,3 +53,4 @@ end
 struct DendriteNode{T}
     a::BitVector
 end
+
