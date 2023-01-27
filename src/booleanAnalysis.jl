@@ -1,3 +1,4 @@
+
 using LinearAlgebra
 using Zygote
 using Optimisers
@@ -18,7 +19,6 @@ toSpins(a::BitVector) = toSpins.(a)
 toBits(a::Number) = a > 0
 toBits(a::AbstractArray) = toBits.(ifwht(a))
 
-
 using FFTW
 using Hadamard
 
@@ -35,11 +35,10 @@ for epoch in 1:100
 	grads = gradient((x, y) -> -dot(x, y), aCoeffs, bCoeffs)
 	aCoeffs .-= grads[1]*opt.eta
 	# bCoeffs .-= grads[2]*opt.eta
-	aCoeffs .= aCoeffs/norm(aCoeffs)
+	aCoeffs .= aCoeffs/(norm(aCoeffs, 1) + 1e-5)
 	# bCoeffs .= bCoeffs/norm(bCoeffs)
 	# bCoeffs .-= grads[2]*opt.eta
 end
-
 
 struct Segment{T}
     a::BitVector # TODO keep track of when bit flips
@@ -57,3 +56,4 @@ end
 struct DendriteNode{T}
     a::BitVector
 end
+

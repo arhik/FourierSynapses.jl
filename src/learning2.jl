@@ -82,13 +82,11 @@ for epoch in 1:10000
 end
 
 # Degree 1 convergence
-
 bitImage2 = hcat(image2...)
 img2 = Gray.(0.5.*(toSpins(repeat(bitImage2, inner=(10, 1))) .+ 1))
 
 imshow(img2);
-
-plot(ds2)
+plot(ds2);
 
 # Test
 for epoch in 1:10000
@@ -139,7 +137,8 @@ end
 	# end
 	# idxs = CartesianIndices((indxParams...))
 	# for idx in idxs
-		# @info a[idx]		# ret[idx] .= fwht(a[idx])
+		# @info a[idx]		
+		# ret[idx] .= fwht(a[idx])
 	# end
 # end
 # 
