@@ -86,7 +86,7 @@ for epoch in 1:50000
 			end
 			(Int(l) .- synapseAlign).^2
 		end
-		synapseCoeffs .-= grads[2].*opt.eta
+		synapseCoeffs .-= grads[1].*opt.eta
 		synapseCoeffs .= synapseCoeffs./(sum(synapseCoeffs.^2, dims=ndims(datumView)).^0.5)
 	end
 end
