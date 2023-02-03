@@ -4,6 +4,7 @@ using Zygote
 using Optimisers
 using BenchmarkTools
 using BitView
+using Images
 
 
 # Dataset
@@ -96,19 +97,18 @@ using Plots
 
 scatter(map(x -> first(x) |> first, testdataset), map(x -> first(x) |> last, testdataset), markercolor=map(c -> ifelse(c, :blue, :red), map(last, testdataset)))
 
-testresult = []
-
-for epoch in 1:10000
-	idx = epoch
-	(datum, label) = testdataset[idx]
-	datumview = bitview(datum)
-	datumCoeffs = fwht(datumview[:] |> toSpins, 1)
-	push!(testresult, (datum, dot(datumCoeffs, dendCoeffs) > threshold))
-end
-
-
-using Plots
-
-scatter(map(x -> first(x) |> first, testresult), map(x -> first(x) |> last, testresult), markercolor=map(c -> ifelse(c, :blue, :red), map(last, testresult)))
-
+# testresult = []
+# 
+# for epoch in 1:10000
+	# idx = epoch
+	# (datum, label) = testdataset[idx]
+	# datumview = bitview(datum)
+	# datumCoeffs = fwht(datumview[:] |> toSpins, 1)
+	# push!(testresult, (datum, dot(datumCoeffs, dendCoeffs) > threshold))
+# end
+# 
+# using Plots
+# 
+# scatter(map(x -> first(x) |> first, testresult), map(x -> first(x) |> last, testresult), markercolor=map(c -> ifelse(c, :blue, :red), map(last, testresult)))
+# 
 
