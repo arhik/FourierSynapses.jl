@@ -11,11 +11,11 @@ using Images
 dataset = []
 
 for i in 1:10000
-	p = 2.0.*rand(N0f8, 2) .- 1.0
+	p = 2.0*rand(2) .- 1.0
 	if norm(p) < 0.5
-		push!(dataset, (p, false))
+		push!(dataset, (p, 0))
 	else
-		push!(dataset, (p, true))
+		push!(dataset, (p, 1))
 	end
 end
 
@@ -34,7 +34,7 @@ toBits(a::AbstractArray) = toBits.(ifwht(a))
 using FFTW
 using Hadamard
 
-dendrite = BitArray(undef, (128))
+dendrite = BitArray(undef, 2*(8*sizeof(eltype(dataset[1][1]))))
 
 dendCoeffs = fwht(dendrite |> toSpins)
 
@@ -48,17 +48,19 @@ for epoch in 1:60000
 	(datum, label) = dataset[idx]
 	datumview = bitview(datum)
 	datumCoeffs = fwht(datumview[:] |> toSpins, 1)
-	grads = gradient(datumCoeffs, dendCoeffs, label) do x, y, l
+	(y, gradsBack) = pullback(datumCoeffs, dendCoeffs, label) do x, y, l
 		alignment = dot(x, y)
 		global posMean, negMean
-		if l == true
+		if l == 1
 			negMean = (negMean + alignment)/2
 		else
 			posMean = (posMean + alignment)/2
 		end 
 		(l-alignment)^2
 	end
+	grads = gradsBack(1)
 	dendCoeffs .-= grads[2]*opt.eta
+	# dendCoeffs[nextpow(2, length(dendCoeffs)/4) : end] .= 0
 	dendCoeffs .= dendCoeffs/(norm(dendCoeffs))
 end
 
@@ -85,30 +87,30 @@ end
 testdataset = []
 
 for i in 1:10000
-	p = 2.0.*(rand(N0f8, 2)) .- 1.0
+	p = 2.0*rand(2) .- 1.0
 	if norm(p) < 0.5
-		push!(testdataset, (p, false))
+		push!(testdataset, (p, 0))
 	else
-		push!(testdataset, (p, true))
+		push!(testdataset, (p, 1))
 	end
 end
 
 using Plots
 
-scatter(map(x -> first(x) |> first, testdataset), map(x -> first(x) |> last, testdataset), markercolor=map(c -> ifelse(c, :blue, :red), map(last, testdataset)))
+scatter(map(x -> first(x) |> first, testdataset), map(x -> first(x) |> last, testdataset), markercolor=map(c -> ifelse(c == 0, :blue, :red), map(last, testdataset)))
 
-# testresult = []
-# 
-# for epoch in 1:10000
-	# idx = epoch
-	# (datum, label) = testdataset[idx]
-	# datumview = bitview(datum)
-	# datumCoeffs = fwht(datumview[:] |> toSpins, 1)
-	# push!(testresult, (datum, dot(datumCoeffs, dendCoeffs) > threshold))
-# end
-# 
-# using Plots
-# 
-# scatter(map(x -> first(x) |> first, testresult), map(x -> first(x) |> last, testresult), markercolor=map(c -> ifelse(c, :blue, :red), map(last, testresult)))
-# 
+testresult = []
+
+for epoch in 1:10000
+	idx = epoch
+	(datum, label) = testdataset[idx]
+	datumview = bitview(datum)
+	datumCoeffs = fwht(datumview[:] |> toSpins, 1)
+	push!(testresult, (datum, dot(datumCoeffs, dendCoeffs) > threshold))
+end
+
+using Plots
+
+scatter(map(x -> first(x) |> first, testresult), map(x -> first(x) |> last, testresult), markercolor=map(c -> ifelse(c == 0, :blue, :red), map(last, testresult)))
+
 

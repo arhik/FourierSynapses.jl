@@ -6,12 +6,14 @@ using BenchmarkTools
 using BitView
 using Permutations
 using Images
+using Plots
 
 # Dataset
 dataset = []
+datasetLength = 100
 
-for i in 1:100
-	p = (rand(N0f8, 32, ) .- 0.5N0f8)
+for i in 1:datasetLength
+	p = 2.0*rand(32) .- 1.0
 	if rand() < 0.5
 		push!(dataset, (p, 0))
 	else
@@ -42,67 +44,95 @@ dendrites = BitArray(rand(Bool, 32,))
 synapseCoeffs = fwht(synapses |> toSpins, ndims(synapses))
 dendriteCoeffs = fwht(dendrites |> toSpins, ndims(dendrites))
 
-opt = Descent(0.001f0)
+opt = Descent(0.01f0)
 
-posMean = 0.0
-negMean = 0.0 
-dPosMean = 0.0 #.*ones(outdims)
-dNegMean = 0.0 #.*ones(outdims)
+posMean = zeros(32)
+negMean = zeros(32) 
+dPosMean = 0.0 #.*ones(outdims) # Active mean
+dNegMean = 0.0 #.*ones(outdims) # InActive mean
 
-for epoch in 1:50000
+threshold = 0.0
+
+alignmentList = []
+
+thresholdList = []
+
+for epoch in 1:2000
 	global posMean, negMean
 	idx = rand(1:length(dataset))
 	(datum, label) = dataset[idx]
 	datumView = bitview(datum)
 	datumCoeffs = fwht(datumView |> toSpins, ndims(datumView))
-	synapseAlign = view(sum(datumCoeffs.*synapseCoeffs, dims=ndims(datumView)), :, 1)
-	treeAlignActivations = synapseAlign .> posMean
-	treeAlignCoeffs = fwht(treeAlignActivations |> toSpins, ndims(treeAlignActivations))
-	treegrads = gradient(treeAlignCoeffs, dendriteCoeffs, label) do x, y, l
-		alignment = sum((x.*y))
-		(l - alignment)^2
+	dendriteAlign = view(sum(datumCoeffs.*synapseCoeffs, dims=ndims(datumView)), :, 1)
+	dendriteActivations = dendriteAlign .> posMean
+	dendriteActivationCoeffs = fwht(dendriteActivations |> toSpins, ndims(dendriteActivations))
+	(dAlign, dendriteGradsBack) = pullback(dendriteActivationCoeffs, dendriteCoeffs, label) do x, y, l
+		alignment = abs(sum((x.*y)))
+		(alignment)^2
+		# alignment
 	end
+
+	# alignment = sum(dendriteActivationCoeffs.*dendriteCoeffs)
+	# dAlign = alignment
+	
+	push!(alignmentList, dAlign)
+
+
 	global dPosMean, dNegMean
-	alignment = sum(treeAlignCoeffs.*dendriteCoeffs, dims=ndims(treeAlignCoeffs))[1]
-	if label == 0
-		dNegMean = (dNegMean + alignment)/2
+	if dAlign < threshold
+		dNegMean = (dNegMean + dAlign)/2
 	else
-		dPosMean = (dPosMean + alignment)/2
+		dPosMean = (dPosMean + dAlign)/2
 	end
+
+	push!(thresholdList, threshold)
+
 	threshold = (dPosMean + dNegMean)/2
-	activation = alignment > threshold
+	
+	# dendriteGrads = dendriteGradsBack(1)[1]
+
+	activation = dAlign > threshold
+	
 	# We dont tree grads yet but it would be interesting to speed up learning.
 	# treeAlignCoeffs .+= grads[1].*opt.eta
 	# treeAlignCoeffs .= treeAlignCoeffs./(sum(treeAlignCoeffs.^2, dims=ndims(treeAlignCoeffs)).^0.5)
 	# treeAlignActivations = ifwht(treeAlignCoeffs) |> toBits
+	
 	if activation
-		grads = pullback(datumCoeffs, synapseCoeffs, activation) do x, y, l
-			synapseAlign = view(sum(x.*y, dims=ndims(x)), :, 1)
-			global negMean, posMean
-			if l == 0
-				negMean = (negMean + alignment)/2
-			else
-				posMean = (posMean + alignment)/2
-			end
-			(Int(l) .- synapseAlign).^2
+		(sAlign, back) = pullback(datumCoeffs, synapseCoeffs, dendriteActivations) do x, y, dActivations
+			sAlign = view(sum(x.*y, dims=ndims(x)), :, 1)
+			(dendriteActivations .- sAlign).^2
 		end
-		synapseCoeffs .-= grads[1].*opt.eta
+		global negMean, posMean
+		# for l in dendriteActivations
+			# if l == 1
+				# negMean = (negMean + alignment)/2
+			# else
+				# posMean = (posMean + alignment)/2
+			# end
+		# end
+		posMean .= (posMean .+ sAlign)/2
+		tgrads = back(1)
+		synapseCoeffs .-= tgrads[2].*opt.eta
 		synapseCoeffs .= synapseCoeffs./(sum(synapseCoeffs.^2, dims=ndims(datumView)).^0.5)
 	end
 end
 
+threshold = (dPosMean + dNegMean)/2
+
 matches = 0
-for epoch in 1:100
+for epoch in 1:(datasetLength)
 	idx = epoch
 	(datum, label) = dataset[idx]
 	datumView = bitview(datum)
 	datumCoeffs = fwht(datumView |> toSpins, ndims(datumView))
 	synapseAlign = view(sum(datumCoeffs.*synapseCoeffs, dims=ndims(datumView)), :, 1)
-	treeAlignActivations = synapseAlign .> posMean
-	treeAlignCoeffs = fwht(treeAlignActivations |> toSpins, ndims(treeAlignActivations))
-	alignment = sum(treeAlignCoeffs.*dendriteCoeffs, dims=ndims(treeAlignCoeffs))[1]
+	dAlignActivations = synapseAlign .> posMean
+	dAlignCoeffs = fwht(dAlignActivations |> toSpins, ndims(dAlignActivations))
+	alignment = sum(dAlignCoeffs.*dendriteCoeffs, dims=ndims(dAlignCoeffs))[1] |> abs
+	# activation = (label - alignment).^2 > threshold
 	activation = alignment > threshold
-	@info label, Int(activation)
+	@info alignment, label, Int(activation)
 	if label == Int(activation)
 		matches += 1
 	end
@@ -110,30 +140,8 @@ end
 
 print(matches)
 
-threshold = (dPosMean + dNegMean)/2
+plot(alignmentList, color=:lightblue, label="alignment")
 
-testresult = []
+plot!(thresholdList, color=:darkmagenta, label="threshold")
 
-for epoch in 1:100
-	idx = epoch
-	(datum, label) = dataset[idx]
-	datumview = bitview(datum)
-	datumCoeffs = fwht(datumview |> toSpins, ndims(datumview))
-	push!(testresult, (datum, sum(datumCoeffs.*synapseCoeffs, dims=ndims(datumView)) .> threshold))
-end
-
-
-using Plots
-
-scatter(map(first, testresult), map(last, testresult))
-
-# Cartesian Indices 
-using Permutations
-synapses = BitArray(undef, (32, 64))
-idxs = CartesianIndices((1:32, 1:64))
-perm = RandomPermutation(32*64)
-permTransform = two_row(perm)
-permIdxs = idxs[permTransform[2, :]]
-out = synapses[permIdxs]
-reshape(out, synapses |> size)
 
