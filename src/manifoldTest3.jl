@@ -63,8 +63,8 @@ end
 for epoch in 1:datasetLength
 	idx = epoch
 	(datum, label) = dataset[idx]
-	datumview = bitview(datum)
-	datumCoeffs = fwht(datumview |> toSpins, ndims(datumView))
+	datumView = bitview(datum)
+	datumCoeffs = fwht(datumView |> toSpins, ndims(datumView))
 	synapseAlign = view(sum(datumCoeffs.*synapseCoeffs, dims=ndims(datumView)), :, 1)
 	dendriteActivations = synapseAlign .> posMean
 	dendriteActivationCoeffs = fwht(dendriteActivations |> toSpins, ndims(dendriteActivations))

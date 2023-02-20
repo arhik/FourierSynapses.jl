@@ -38,7 +38,7 @@ dendrite = BitArray(undef, 2*(8*sizeof(eltype(dataset[1][1]))))
 
 dendCoeffs = fwht(dendrite |> toSpins)
 
-opt = Descent(0.001f0)
+opt = Descent(0.01f0)
 
 posMean = 0
 negMean = 0

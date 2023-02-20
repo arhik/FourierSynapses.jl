@@ -151,3 +151,15 @@ print(matches)
 plot(alignmentList, color=:lightblue, label="alignment")
 
 plot!(thresholdList, color=:darkmagenta, label="threshold")
+
+
+a = BitVector(rand(Bool, 2)) |> toSpins
+x = BitVector([true, false]) |> toSpins
+
+
+# --------
+
+a = bitview(0:7 |> collect .|> UInt8) |> BitArray |> toSpins
+x = bitview(repeat([33,], 128) .|> UInt8) |> BitArray |> toSpins
+
+(1/(2^7))*(reduce(*, (1 .+ a.*(x))/2, dims=2))
