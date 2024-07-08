@@ -18,4 +18,6 @@ module FourierSynapse
 # for this approach. Hopefully this would be more efficient for its contextual
 # splatting capability.
 
+# N.B Current code doesn't reflect the fourier transform but instead use hadamard'
+
 end # module FourierSynapse
